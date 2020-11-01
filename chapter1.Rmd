@@ -1,13 +1,37 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
+This course, *Introduction to Open Data Science 2020*, builds on 1) openness of science and data, and 2) data science (e.g., wrangling, examining, analyzing, and visualizing data). Because data science also includes collaborating with others and using openly available software tools and services (e.g., R, RStudio, Git, GitHub), *openness* is the key word in this course. 
 
-```{r}
-# This is a so-called "R chunk" where you can write R code.
+**The course has 6 main topics:** <br>
+1. Introduction <br>
+2. Regression and model validation <br>
+3. Logistic regression <br>
+4. Clustering and classification <br>
+5. Dimensionality reduction techniques <br>
+6. Analysis of longitudinal data <br>
 
-date()
+Each week has deadlines for 1) submitting exercises, and 2) peer reviewing submissions from a few of the other students.
 
-```
-The text continues here.
+The course platform in MOOC contains lots of relevant information: instructions regarding the course, discussion forums, lecture videos, other videos, exercises, a place for submissions, links to other helpful resources (including books). Lectures (and smaller group sessions) take place on mondays!
 
+**Overall, this course will introduce ways to become better at interpreting data, presenting findings, and sharing knowledge.**
+
+<style>
+div.blue { background-color: #e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+  
+My GitHub repository: https://github.com/PinjaMarin/IODS-project
+
+</div>
+
+
+### Thoughts during the first week
+I really enjoyed the first zoom webinar and found the DataCamp videos extremely informative. The first part "Hello R" clarified the way R works although its content was familiar to me. Most of the topics in the second part "Getting hooked on R" were new to me. 
+
+I have not used GitHub before so I really appreciated the clear instructions on the course site and the opportunity to look at the webinar regarding GitHub and RStudio. 
+
+I am very excited about the upcoming weeks, particularly about getting more familiar with GitHub and learning to use R better. I expect the R part to be time consuming, occasionally frustrating, and rewarding.
+<br>
+<br>
