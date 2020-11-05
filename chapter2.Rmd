@@ -1,13 +1,174 @@
-# Insert chapter 2 title here
+# Regression analysis (week2)
 
-*Describe the work you have done this week and summarize your learning.*
+```{r, message=FALSE}
+#Loading libraries
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(tidyverse)
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
-
-```{r}
-date()
 ```
 
-Here we go again...
+## Loading and describing the data
+
+```{r}
+getwd()
+#setting working directory as the data folder to read in the data. Reading the modified data into R from my local folder and saving it into lrn2014
+setwd('./data') 
+lrn2014 <- read.csv('learning2014.csv')
+
+#examining the data
+dim(lrn2014) #166 observations and 8 variables (one is an additional id-variable)
+str(lrn2014)
+
+#Reading data from online to certainly have it correct
+
+lrn14 <-read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt", sep=",", header=TRUE)
+
+dim(lrn14) #the data has 166 observations and 7 variables
+str(lrn14) #the variables are: gender, age, attitude, deep, stra, surf, and points
+summary(lrn14)
+glimpse(lrn14)
+```
+<br>
+The data is a modified and shortened version of a longer data set examining students' approaches to learning and study skills on a statistics course in 2014.
+<br> <br>
+**The shortened data contains 166 participants, and the following variables:** <br>
+
+* Gender (male, female) 
+* Age (from 17 to 55 years)
+* Attitude = general attitude towards statistics (ranging between 1.4-5)
+* Deep = a sum variable measuring a deep way of learning (1.6-4.9)
+* Stra = a sum variable measuring a strategic, organized way of learning (1.3-5)
+* Surf = a sum variable measuring a surface, shallow way of learning (1.6-4.3)
+* Points = exam points, how well one did in a statistics exam (7-33)
+
+The values of points and attitude are integers, other numerical values have decimals.
+
+
+## Examining the data further
+
+```{r}
+glimpse(lrn14) #gender is the first column
+
+#pairs function gave an error about gender having an 'invalid color name'
+#Lets try with a recoded value of gender where M=1 and F=2.
+
+lrn142 <- lrn14 %>% 
+  mutate(gender_num = recode(gender, "M"="1", "F"="2")) 
+#recoding it also to be numeric
+lrn142 <- lrn142 %>%
+  mutate(gender_num = as.numeric(gender_num))
+
+mean <- mean(lrn142$gender_num)
+mean #mean 1.7 and would be 1.5 if even men and women, so more women in the data
+#pairs(lrn14[c(-1)], col=lrn14$gender_num) # I used this to check colours -> red is 2=females, black is 1= males
+
+#a scatter plot of the variables (gender only shown with colours)
+pairs(lrn142[c(-1,-8)], col=lrn142$gender_num) 
+
+#Lets make a plot with scatter plots, correlations, and distributions
+plot_c <- ggpairs(lrn14, 1:7, progress = ggmatrix_progress(clear=T), mapping = aes(col=gender, alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)), proportions = "auto")
+
+plot_c
+
+#Lets make and print the same plot but without genders separated
+plot <- ggpairs(lrn14, 2:7, progress = ggmatrix_progress(clear=T), lower = list(combo = wrap("facethist", bins = 20)), proportions = "auto")
+plot
+
+summary(lrn14) #shows number of observations for character variables, and range and values, such as mean, for numerical variables.
+
+
+```
+<br>
+<br>
+**Based on the plots and summary information:** <br>
+
+* People are mainly young (the age variable is skewed to the right, mean 25.5 years)
+* The variables attitude, stra, and surf are quite normally distributed
+* The deep variable is a bit skewed to the left
+* the points variable is somewhat skewed to the left (mean=22.7 out of 33.0 points)
+* The plots show that the data contains more females than males, and indicate some gender differences. For instance, male may have a more positive attitude towards statistics.
+
+**Three strongest correlations in the whole data are between:** <br>
+
+1. attitude and points (r= .44)
+2. deep and surf (r= -.32)
+3. attitude and surf (r= -.18)
+
+
+## Making a regression model that predicts exam points with attitude, strategic way of learning, and gender
+
+```{r}
+#Fitting a linear model
+r3_model <- lm(points ~ attitude + stra + gender, data = lrn14)
+summary(r3_model)
+#strategic way of learning or gender were not significantly (p >.05, even > 0.1) related to the exam points. This significance level is not enough to reliably reject hypothesis 0 of the t-test (which states that no relation exists between a particular x variable and the y variable). 
+#Lets make the model with only the significant predictor, i.e. attitude.
+r1_model <- lm(points ~ attitude, data = lrn14)
+summary(r1_model)
+
+```
+
+The new model shows that mathematically: <br>
+exam point= 11.64 + 3.53*attitude (+e) <br>
+
+The intercept is 11.64 which means that if attitude was 0, this would be the predicted value of y. This is not so clear to interpret now (just shows that y is not 0 when x would be 0). However, I think that the x-variable can be centered so that the mean value of x is zero. In that case the intercept would be the predicted (mean) y-value at the mean of x.
+
+The 3.53 beta value of attitude is quite strong. It shows that for each one point change in the attitude variable, the points in exam go up 3.5 points. That is, the more positive attitude one has, the more likely one does well in the exam.
+
+Both the intercept and attitude are significant at p < .001. This means that H0 is rejected for attitude and H1 can be accepted, i.e. there is a relationship between attitude and points. For the intercept, the significant t-test means that the intercept is not 0.
+
+**In short, of attitude, strategic way of learning, and gender, only attitude significantly (p<.001) predicted exam points. With each one point change in the attitude variable, the points in exam are predicted to go up 3.5 points.**
+
+**Other model information from the model summary:**
+
+* While the t-tests show the significance of a specific  variable, the F-test shows whether any of the predictors are significant. Since the model contains a significant predictor, the F-test is also significant (p <.001).
+* The R squared (now both adjusted R-squared and the basic R-squared) is 0.19. This means that the attitude variable is able to explain 19% of the variation (variance) in the exam points. 
+  * The adjusted R-squared is overall a better measure than     R-squared because it adjusts the explanatory power         compared to chance (e.g., having many predictors may       simply by chance increase the prediction of y)
+  
+```{r}
+#making a plot to view the final model
+qplot(attitude, points, data = lrn14) + geom_smooth(method = "lm")
+
+```
+  
+
+## Creating diagnostic plots and examining model assumptions
+
+```{r}
+#Plots for residuals vs fitted values (1), normal QQ-plot (2), and residuals vs. leverage (5)
+plot(r1_model,which= c(1,2,5),
+     par(mfrow = c(2,2)))
+
+```
+
+**A linear regression model has (among other things) the following assumptions in order to guarantee its predictions validity/reliability:**
+
+* The error terms (i.e., residuals) of the model are normally distributed
+* The residuals have constant variance on all x-variable values
+* The data does not contain troublesome outliers
+* There is a linear relationship between the y-variable and x-variables
+
+**From the plots we see that:**
+
+* the normality of errors is probably acceptable although some breakage from normality does exist on both ends (QQ-plot)
+* The residuals seem to have a constant variance (the plot of residuals vs. fitted values)
+* A couple observations have leverage of > 0.04. The model is probably acceptable without removing any of these observations
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+
+
+
+
+
+
+
+
+
