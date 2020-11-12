@@ -1,0 +1,206 @@
+
+# Logistic regression analysis (week3)
+
+
+```{r, message=FALSE, warning=FALSE}
+
+#loading libraries
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(plotly)
+library(foreign)
+library(tibble)
+library(foreign)
+library(corrgram)
+library(psych)
+
+```
+
+
+## 1. General information
+```{r}
+#Reading in the joined (student alcohol consumption) data from online (due to the comment in the discussion forum about the correct Ns - I had too many....Although this seems to be the case also in the online link, oh well.)
+
+alc <-read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/alc.txt", sep=",", header=TRUE)
+
+glimpse(alc) #382 participants, 35 variables.
+head(alc,6)
+
+```
+
+* Information about the data
+  + participants (382) are secondary school students from two Portuguese  
+    schools
+  + data contains background variables (e.g., age, sex, school), school and     social life variables (e.g., number of school absenses, alcohol use), 
+    and information about grades in mathematics and Portuguese language
+  + for a comprehensive description of the dataset see: 
+    https://archive.ics.uci.edu/ml/datasets/Student+Performance
+
+
+**The variables that will be examined here** <br>
+
+* The target (dependent) variable: 
+    + high/low alcohol consumption 
+* The predictors:
+    + studytime
+    + failures
+    + absences (from school)
+    + G3 i.e. average of final grade in Portuguese and math
+  
+**The Hypotheses:** <br>
+
+**Alcohol consumption will be...** <br>
+
+1. negatively related to weekly study time and final school grade
+2. positively related to school absences and failed classes
+
+
+## 2. Looking into the variable distributions and their relationships
+```{r}
+# choosing only the variables of interest
+alc_s <- alc %>%
+select(studytime,failures,absences,G3, alc_use, high_use) 
+
+#transforming data into long format for plotting
+alc_sl <- alc_s %>%
+  gather(var, measure, -high_use)
+
+#Visualising the distributions
+alc_sl %>%
+  ggplot(aes(measure)) + geom_density() +
+  facet_wrap(~var, scales = "free_x", "free_y") +
+  theme_bw()
+
+#Looking into means and other summary statistics
+summary(alc_s)
+#the percentage in the high use (and not high use) categories
+prop.table(table(alc$high_use))
+
+#Looking into variable relationships
+ggpairs(alc_s,1:5, progress = ggmatrix_progress(clear=T), mapping = aes(alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)), proportions = "auto")
+
+# a visual correlation matrix
+corrgram(alc_s, order=T, cor.method="spearman")
+
+#examining the predictors separately among students with high vs low alcohol use, red is higher use.
+ggpairs(alc_s, 1:4, progress = ggmatrix_progress(clear=T), mapping = aes(col=high_use, alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20, size=2.0)), proportions = "auto")
+
+```
+
+**Comments about the variables and the hypothesis**
+
+- Distributions: 
+  + G3 is quite normally distributed
+  + most common studytime is 2-5 hrs a week (value 2)
+  + the majority has no class failures or absences
+  + alcohol use is skewed to the right i.e. mainly low: 71% of the students are in the low alcohol use category and 29% are in the high use category.
+  
+- Relations between the predictors and alcohol use:
+  + The correlations are quite small but oriented as predicted in the 
+    hypotheses, except for G3 which is practically not related to alcohol 
+    use.
+
+## 3. Fitting a logistic regression model
+```{r}
+#A logistic regression model for predicting alcohol consumption (high vs low) with the chosen four predictors
+m <- glm(high_use ~ failures + absences + studytime + G3, data = alc, family = "binomial")
+
+# printing out the model summary
+summary(m)
+
+#creating coefficients as odds ratios
+OR <- coef(m) %>% exp
+
+# computing confidence intervals for the odds ratios
+CI <- confint(m) %>% exp
+
+#combining and printing the ORs and CIs
+cbind(OR, CI)
+
+#testing: would G3 be significant as the only predictor
+m2 <- glm(high_use ~ G3, data = alc, family = "binomial") 
+summary(m2) #no, not significant
+
+```
+### 3.1 Interpreting the model:
+
+**The summary shows that** three of the predictors significantly predict low vs. high alcohol use. Compared to those with low alcohol use, lower study time (p<.001), and more absences (p<.001) and class failures (p<.05) are more typical for those with high alcohol use. Final grade did not significantly differ between the alcohol use groups. Except for the grade variable the relations are as stated in the hypothesis. 
+
+**The odds ratios (OR) and their confidence intervals** show that, with 95% confidence, the odds ratio for...
+
+* studytime is between  0.43-0.80
+* absences is between 1.03 -1.10
+* failures is between 1.02-1.95
+
+In addition, G3 had an odds ratio of 1.01 and its CI went above and below 1. This matches the fact that it does not significantly predict the alcohol use category. Both groups are equally likely (OR=1) to get specific grades. Also the near 1 OR of absences (OR= 1.06) reflects the low significance (and usefulness) of this variable. <br>
+Overall, OR < 1 means that the examined feature is less likely in the "high" group, and OR > 1 mean that the feature is more likely in the "high" group.
+
+### 3.2 The predictive power of a modified model
+
+```{r}
+#choosing the statistically significant variables from the first model, and making a new model with them
+m_f <- glm(high_use ~ failures + absences + studytime, data = alc, family = "binomial")
+
+#Exploring the predictive power of this modified model
+
+# predicting the probability of high_use
+probabilities <- predict(m_f, type = "response")
+
+# adding the predicted probabilities to the data
+alc <- mutate(alc, probability = probabilities)
+
+#predicting high_use with the probabilities
+alc <- mutate(alc, prediction = probability > 0.5)
+
+select(alc, failures, absences, studytime, high_use, probability, prediction) %>% tail(10) #two misclassifications can be seen with these 10 observations (prediction based on model probabilities vs. actual high_use)
+
+# Creating a 2x2 cross tabulation of the target variable, i.e. actual case of high alcohol use, versus the predicted high vs. low use.
+table(high_use = alc$high_use, prediction = alc$prediction) #This gives numbers
+
+# The same tabulation but in percentages, and with error sums
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table() %>% addmargins()
+
+# Making a plot to visualise the prediction accuracy (the false positives and false negatives that the model creates are colored with blue in the plot)
+g <- ggplot(alc, aes(x = probability, y = high_use, col=prediction)) + geom_point()
+g
+
+#computing the average number of incorrect predictions.
+# 1) a loss function i.e. define mean prediction error
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+# 2)computing incorrectly classified cases for our model
+loss_func(class = alc$high_use, prob = alc$probability) #27% cases incorrectly classified. This can also be obtained by combining the wrongly classified percentages from the cross-tabulation table (0.23 + 0.037)
+
+```
+
+Based on the cross-tabulations of actual and predicted alcohol use class, and the value obtained from the loss_function, the model has an accuracy rate of (100-27) = 73%. This means that overall, 27% of cases are incorrectly classified into high or low consumption class. Since a random sorting (through numerous guesses) to these two classes would give an accuracy rate of 50%, the model seems to be an improvement to this.
+
+
+### 3.3 Lastly, some cross-validation of the model
+```{r}
+# Performing a 10-fold cross-validation on the modified model
+library(boot)
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m_f, K = 10)
+# average number of wrong predictions, i.e. prediction error (The cv.glm function saves the error in delta)
+cv$delta[1] 
+```
+The model has a prediction error of 0.28, which is not smaller (better) than the one in DataCamp of 0.26.
+
+Could I find a better model? Perhaps, by looking into all variable correlations with the alcohol use variable and choosing the ones that correlate with it the strongest. But how much better would this model be, it shall remain a mystery for now.
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+
+
+
+
