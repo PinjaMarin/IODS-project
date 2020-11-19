@@ -63,10 +63,7 @@ human <- inner_join(hd_f, gi_f, by = "country", suffix = c(".hd", ".gi"))
 
 glimpse(hd_gi) #195 rows, 19 columns (as was supposed to)
 
-#saving the data into my data folder
-#first, setting the correct working directory
-setwd("~/GitHub/IODS-project/data") 
-#then saving the data
+#saving the data into my data folder (which is the same directory as this file)
 write.csv(human, file='human.csv')
 
 
