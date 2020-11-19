@@ -1,0 +1,304 @@
+---
+title: "R Notebook"
+output: html_document
+---
+
+# 4. Clustering and classification (week4)
+
+## 4.1. Information about the data
+
+```{r message=FALSE, warning=FALSE}
+#loading the MASS package
+library(MASS)
+#loading the data from it
+data("Boston")
+
+
+dim(Boston)#506 obs, 14 var.
+str(Boston) # all values are numerical, 3 have integer values and the rest have decimals.
+head(Boston,10)
+
+```
+
+The dataset contains information related to housing in the suburbs of Boston. There are 506 rows and 14 columns (variables) in the data. A few examples of variable measures are:
+
+* per capita crime rate by town
+* proportion of blacks by town
+* median value of owner-occupied homes
+
+More information about the data can be found here: https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html
+
+Let's take a closer look at the variables
+```{r message=FALSE, warning=FALSE}
+#loading packages
+library(tidyverse)
+library(corrplot)
+library(GGally)
+
+#a graphical overview of the data
+#lets do pairs on parts of data at a time to get a clearer picture
+pairs(Boston[1:7])
+pairs(Boston[7:14])
+#looking at distributions and correlations
+ggpairs(Boston,lower = list(combo = wrap("facethist", bins = 20)),
+             upper = list(continuous = wrap("cor", size = 1.5)))
+
+# calculating the correlation matrix and rounding it
+cor_matrix<-cor(Boston) %>% round(2)
+#looking into the correlations
+cor_matrix
+# visualizing the correlation matrix
+corrplot(cor_matrix, method="circle", type="upper", cl.pos="b", tl.pos="d",tl.cex=0.6)
+
+#show summaries of the variables
+summary(Boston)
+
+#two additional histograms
+hist(Boston$black)
+hist(Boston$lstat)
+
+```
+
+
+* About the distributions
+  * Most variables are skewed, for instance: crim (mainly low crime rate), zn (low proportion of residential land zoned for lots over 25,000 sq.ft.), chas (most tracts do not bound river), black (in most suburbs more than half of the residents are black). In addition, most owner-occupied units are built prior to 1940 (age variables shows this as a proportion) and most of the suburbs have mainly a population above low status.
+* About the variable relations
+  * The data contains quite many correlations that are above |.50|.
+  * Some of the strongest correlations in the data are between: 
+      * rad and tax (r = .91)
+      * nox and indus (r= .76)
+      * dis and age (r = -.75)
+      * medv and lstat (r= -.74)
+      * dis and indus (r= -.71)
+      
+## 4.2. Modifying the data
+
+### Standardizing the variables
+```{r message=FALSE, warning=FALSE}
+#centering and standardizing the variables
+boston_scaled <- scale(Boston)
+
+# summaries of the scaled variables
+summary(boston_scaled)
+
+# class of the boston_scaled object
+class(boston_scaled) #matrix
+# transforming it into a data frame
+boston_scaled <- as.data.frame(boston_scaled)
+
+```
+
+In the standardized (and centered) data all variable means are now zero. Also the min and max values changed (min is now negative), and range became smaller for many of the variables due to the applied transformation formula.
+
+
+### Creating a categorical variable of the scaled crime rate
+
+```{r}
+#creating a quantile vector of crim and print it
+q <- quantile(boston_scaled$crim)
+q
+
+#Using the quantiles as the break points in the new categorical variable
+crime <- cut(boston_scaled$crim, breaks = q, include.lowest = TRUE, label=c("low", "med_low", "med_high", "high"))
+
+#looking into the new factor crime variable
+table(crime) #seems fine
+
+#adding the crime variable to the scaled data
+boston_scaled <- data.frame(boston_scaled, crime)
+
+#dropping the original crim variable from the data
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+
+
+```
+
+### Dividing the data into train and test sets
+```{r}
+#separating the data so that 80% of the data belongs to the train set (and 20% to the test set)
+
+# number of rows in the Boston dataset 
+n <- nrow(boston_scaled)
+
+# randomly choosing 80% of the rows
+training <- sample(n,  size = n * 0.8)
+
+# create the train set
+train <- boston_scaled[training,]
+
+# create the test set 
+test <- boston_scaled[-training,]
+
+dim(test) #102 obs
+dim(train) #404 obs
+
+```
+
+
+## 4.3. Linear discriminant analysis
+
+```{r}
+#Fit the linear discriminant analysis on the train set. Use the categorical crime rate as the target variable and all the other variables in the dataset as predictor variables. 
+
+#fitting the LDA
+lda.fit <- lda(crime ~ ., data = train)
+#printing the model object
+lda.fit
+
+# target classes as numeric
+target <- as.numeric(train$crime)
+
+#Draw the LDA (bi)plot
+plot(lda.fit, dimen = 2, col=target, pch=target)
+
+```
+
+
+
+```{r}
+#Save the (correct) crime categories from the test set 
+correct_crime <- test$crime
+
+# remove the categorical crime variable from the test dataset
+test <- dplyr::select(test, -crime)
+#
+#Predict the classes with the LDA model on the test data. 
+lda.pred <- predict(lda.fit, newdata = test)
+#
+#Cross tabulate the results with the crime categories from the test set. 
+table(correct = correct_crime, predicted = lda.pred$class)
+
+```
+
+At least before knitting: <br>
+The LDA predicted all high crime rate cases correctly, and most of the medium high, medium low and low crime rate instances also correctly. Still, med_high and low cases had a notable proportion (>40%) of cases misclassified. The plot also shows visually that the high crime cases are clearly separate from most of the other classes' cases.
+
+The lda.fit object also showed that the first dimension explained 95% of the (overall explained) variance between the crime rate categories, the second dimension explained 3.6% and the last 1.2% of the variance covered by the model (before knitting!). On the first dimension, rad (= accessibility to radial highways) mostly separated the crime rates. The group means show that it is the highest in high crime rate areas.
+
+## 4.4. Clustering the data
+
+```{r message=F, warning=F}
+#Reload the Boston dataset
+data("Boston")
+
+#standardize the dataset (to get comparable distances below). 
+#saving the sclaed data as a data frame
+boston_scaled2 <- scale(Boston) %>% as.data.frame()
+
+#looking into last 10 observations
+tail(boston_scaled2,10)
+#and a summary
+summary(boston_scaled2)
+
+#Calculate the distances between the observations.
+#First,euclidean distance:
+#matrix
+dist_eu <- dist(boston_scaled2) #euclidean distance is the default
+#summary
+summary(dist_eu) # median distance is 4.8 (out of 14.4)
+#Second,manhattan distance:
+# matrix
+dist_man <- dist(boston_scaled2, method="manhattan")
+#summary 
+summary(dist_man) # median distance is 12.6 (out of 48.9)
+
+
+#Run k-means algorithm on the dataset. 
+km <-kmeans(boston_scaled2, centers = "4")
+
+#Investigate what is the optimal number of clusters and run the algorithm again. 
+
+#looking at how the total of within cluster sum of squares (WCSS) behaves when the number of cluster changes; the optimal number of clusters is when the total WCSS drops radically.
+
+#to always use the same initial cluster center
+set.seed(123)
+#Let's check how the WCSS change through 10 different cluster amounts (1 to 10 clusters).
+k_max <- 10 #the max number of clusters
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled2, k)$tot.withinss}) #calculating the WCSS
+
+#examining the results
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+#The biggest drop comes at cluster change from 1 to 2 so 2 clusters seems to be the best choice.
+
+#Let's rerun the k-means clustering
+km_f <-kmeans(boston_scaled2, centers = "2")
+
+#plotting (visualising) the clusters (in two subsets to see the results clearer)
+pairs(boston_scaled2[1:7], col =km_f$cluster)
+pairs(boston_scaled2[8:14], col =km_f$cluster)
+
+#transforming km_f into a factor for the visualization
+km_f$cluster <- as.factor(km_f$cluster)
+
+#some further visualization with the two subsets
+ggpairs(boston_scaled2[1:7],lower = list(combo = wrap("facethist", bins = 20)),upper = list(continuous = wrap("cor", size = 1.5)),  mapping=ggplot2::aes(colour = km_f$cluster, alpha=0.5))
+
+ggpairs(boston_scaled2[8:14],lower = list(combo = wrap("facethist", bins = 20)),upper = list(continuous = wrap("cor", size = 1.5)),  mapping=ggplot2::aes(colour = km_f$cluster, alpha=0.5))
+
+```
+
+The plots indicate that most of the variables are differently distributed among the two clusters. Still, it is difficult to say which variables would differ significantly. At least crim (crime rate), indus (amount of non-retail business acres), nox (nitrogen oxides concentration), lstat (amount of lower status in the population), tax (property-tax), rad (accessibility to radial highways), dis (distance to employment centers), and age appear to separate between the clusters. Overall, the clusters seem to partially differentiate between higher and lower-class neighborhoods.
+<br>
+<br>
+<br>
+Bonus:
+
+1. Fitting an additional K-means cluster analysis with 3 clusters to the standardized data, <br>
+and 2. Performing an LDA using the clusters as target classes
+
+```{r}
+#Performing the cluster analysis
+km3 <-kmeans(boston_scaled2, centers = "3")
+
+#making the target variable numeric
+clusters <- as.numeric(km3$cluster)
+#adding the target variable into the data
+boston_scaled2 <- data.frame(boston_scaled2, clusters)
+
+
+#OBS! I had to comment out the below code because the lda-function gave an error when knitting "variable 4 appears to be constant within groups calls". I could not find a way to fix it. The text in the end is based on the results that I got (before knitting the document).
+
+#Including all the variables in the Boston data as predictors in the LDA
+#lda.fit2 <- lda(clusters ~ ., data = boston_scaled2)
+
+#printing the LDA object
+#lda.fit2
+
+#Visualize the results with a biplot (include arrows representing the relationships of the original variables to the LDA solution).
+
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "blue", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+#creating the plot
+#plot(lda.fit2, dimen = 2, col=clusters, pch=clusters)
+#lda.arrows(lda.fit2, myscale = 4.5)
+
+```
+
+Based on the LDA object and the plot, the most influencial linear separators for the clusters are nox, tax, zn, and medv. Some other variables, such as age, also help in separating the clusters. Still, because the first discriminant function is the most important one (explaining 85% of the explained variance between the clusters), the variables that load to it the strongest separate the clusters the best, i.e. nox (nitrogen oxides concentration) and tax (property-tax). Looking at the group means, group1 seems to be the "worst" neighborhoods, group2 the "best", and group3 something in between.
+<br>
+<br>
+<br>
+<br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
