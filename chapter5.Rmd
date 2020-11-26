@@ -84,7 +84,7 @@ biplot(pca_human, choices = 1:2, cex= c(1,1), col=c("orange", "navy"))
 * In sum, without standardizing the variables, PC1 that mainly reflects GNI is the most important underlying dimension when explaining the variance in the data.
 * Of the countries, Qatar seems to have the lowest standard of living (i.e., GNI)
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig.width=12, fig.height=6}
 #Let's draw the plot again but name the PC1 as "Low standard of living", see: http://hdr.undp.org/sites/default/files/hdr2015_technical_notes.pdf
 
 biplot(pca_human, choices = 1:2, cex= c(1,1), col=c("orange", "navy"), xlab = "Low standard of living")
@@ -95,7 +95,7 @@ biplot(pca_human, choices = 1:2, cex= c(1,1), col=c("orange", "navy"), xlab = "L
 
 ## 5.4 Standardizing the variables and running the PCA again
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig.width=12, fig.height=6}
 
 #standardizing the data
 human_std <- scale(human_)
@@ -121,7 +121,7 @@ biplot(pca_humanstd, choices = 1:2, cex= c(0.8,0.9), col=c("lightpink", "darkblu
 * The second dimension (PC2) mainly captures variables measuring: labour_ftom (posit), parl_f (posit) and could thus be termed "Equality".
 * The biplot shows that certain countries can quite clearly be set apart from the rest of the countries based on these two components. Similar countries also cluster together, for instance some European countries (Belgium, Netherlands) are located in the upper left corner/quarter of the plot with quite high equality.
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig.width=12, fig.height=6}
 #Let's draw the plot again so that PC1 is named "Standard of living and education" and PC2 is named "Equality".
 
 biplot(pca_humanstd, choices = 1:2, cex= c(1,1), col=c("orange", "navy"), xlab = "Low standard of living and education", ylab= "Equality")
@@ -146,13 +146,21 @@ tea1 <- dplyr::select(tea, 1:13)
 tea2 <- dplyr::select(tea, 14:25)
 tea3 <- dplyr::select(tea, 26:36)
 
+
+```
+```{r fig.width=12, fig.height=6}
+
 #drawing the plots 
 gather(tea1) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
 
 gather(tea2) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
 
 gather(tea3) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+
+
 ```
+
+
 
 ## 5.6 Multiple Correspondence Analysis (MCA) on the subdata tea3
 
