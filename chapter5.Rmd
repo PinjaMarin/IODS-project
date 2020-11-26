@@ -1,0 +1,182 @@
+---
+title: "chapter5"
+output: html_document
+---
+
+# 5. Dimensionality reduction techniques (week5)
+
+## 5.1 Loading in data
+
+```{r message=FALSE, warning=FALSE}
+
+#Loading in the data from my local data folder, row.names=1 keeps the country names as row names.
+setwd("./data")
+human_ <- read.csv("humanf.csv", row.names=1)
+
+head(human_,4)
+dim(human_) # seems good
+
+#loading libraries
+library(GGally)
+library(ggplot2)
+library(corrplot)
+library(tidyverse)
+
+```
+
+## 5.2 A graphical overview of the data and summaries of the variables
+```{r warning=FALSE, message=FALSE}
+#variable summaries
+summary(human_)
+
+#a graphical overview of the data
+ggpairs(human_,lower = list(combo = wrap("facethist", bins = 20)), upper = list(continuous = wrap("cor", size = 3)))
+
+#looking more into the correlations
+# calculating the correlation matrix and rounding it
+cor_matrix<-cor(human_) %>% round(2)
+#looking into the correlations
+cor_matrix
+# visualizing the correlation matrix
+corrplot(cor_matrix, method="circle", type="upper", cl.pos="b", tl.pos="d",tl.cex=0.6)
+
+
+```
+
+**Descriptions of the variables:**
+
+* edu2_ftom = Proportion of females / proportion of males with at least secondary education
+* labour_ftom = Proportion of females / proportion of males in the labour force
+* Edu_exp = Expected years of schooling 
+* life_exp = Life expectancy at birth
+* GNI = Gross National Income per capita
+* mat_mor = Maternal mortality ratio
+* Adol_birth = Adolescent birth rate
+* parl_f = Percentange of female representatives in parliament
+
+**Some observations about the data:**
+
+* In most countries, maternal mortality, GNI, and adolescent birth rate are relatively low.
+* Proportion of females to males with a secondary education is quite normally distributed among the countries, although men do tend to have higher education than women.
+* Expected years of schooling overall is more normally distributed
+* Some of the strongest correlations are between 1) maternal mortality and life expectancy (r= -0.86), 2) life expectancy and expected years of schooling (r = 0.79), and 3) adolescent birth rate and maternal mortality (r= 0.76)
+
+
+## 5.3 Perform principal component analysis (PCA) and draw a biplot displaying the observations by the first two principal components
+
+```{r message=FALSE, warning=FALSE}
+#PCA (with the SVD method)
+pca_human <- prcomp(human_)
+#printing the summary object and a summary of it
+pca_human
+summary(pca_human) #this shows clearly the proportion of variance captured by each component. The first PC explains 99.9 % of the variance that is captured. It also shows the standard deviations.
+
+#Drawing a biplot
+biplot(pca_human, choices = 1:2, cex= c(1,1), col=c("orange", "navy"))
+
+```
+
+**Interpreting and commenting on the results:**
+
+* The first principal component explains 99.9 % of the variance that is captured, and the second PC in practice covers the little variance that is left. 
+* Looking at the PCA results and the biplot it seems that (pretty much) the only variable which mattered for explaining the variance is GNI, i.e. countries' Gross National Income per capita. 
+* This is understandable in light of the variable distributions: GNI had by far the largest variance and range with its max value being over 100,000!
+* In sum, without standardizing the variables, PC1 that mainly reflects GNI is the most important underlying dimension when explaining the variance in the data.
+* Of the countries, Qatar seems to have the lowest standard of living (i.e., GNI)
+
+```{r message=FALSE, warning=FALSE}
+#Let's draw the plot again but name the PC1 as "Low standard of living", see: http://hdr.undp.org/sites/default/files/hdr2015_technical_notes.pdf
+
+biplot(pca_human, choices = 1:2, cex= c(1,1), col=c("orange", "navy"), xlab = "Low standard of living")
+
+
+```
+
+
+## 5.4 Standardizing the variables and running the PCA again
+
+```{r message=FALSE, warning=FALSE}
+
+#standardizing the data
+human_std <- scale(human_)
+
+summary(human_std) #seems good.
+
+#PCA (with the SVD method)
+pca_humanstd <- prcomp(human_std)
+
+pca_humanstd
+summary(pca_humanstd) # a more reasonable/useful finding with the  first PC explaining 54% of the variance, 2nd PC explaining 16% and third explaining 10% etc.
+
+#Drawing the biplot
+biplot(pca_humanstd, choices = 1:2, cex= c(0.8,0.9), col=c("lightpink", "darkblue"))
+
+```
+
+**Interpreting and commenting on the results:**
+
+* With the standardized variables the PCA results seem a lot more informative (and reliable!). This is because in PCA variables with high standard deviations (and variance overall) tend to get more weight than their importance would actually justify. Thus, standardization of variables is useful and often important before running a PCA. 
+* The results show that the first PC covers 54% of the variance and the second PC covers 16% of the variance.
+* The biplot and the results show that the first dimension represents matters such as: life_exp (neg), edu_exp (neg), GNI (neg), Adol_birth (posit), mat_mor (posit), edu2_ftom (neg). Thus it could be named "Low standard of living and education".
+* The second dimension (PC2) mainly captures variables measuring: labour_ftom (posit), parl_f (posit) and could thus be termed "Equality".
+* The biplot shows that certain countries can quite clearly be set apart from the rest of the countries based on these two components. Similar countries also cluster together, for instance some European countries (Belgium, Netherlands) are located in the upper left corner/quarter of the plot with quite high equality.
+
+```{r message=FALSE, warning=FALSE}
+#Let's draw the plot again so that PC1 is named "Standard of living and education" and PC2 is named "Equality".
+
+biplot(pca_humanstd, choices = 1:2, cex= c(1,1), col=c("orange", "navy"), xlab = "Low standard of living and education", ylab= "Equality")
+
+
+```
+
+## 5.5 Loading and exploring a new dataset
+
+```{r message=FALSE, warning=FALSE}
+#Load the tea dataset from the package Factominer.
+library(FactoMineR)
+data("tea")
+
+dim(tea) #300 obs, 36 var. 
+head(tea,6) #data largely strings, text format variables
+str(tea) # variables are of type factor and most of them have two levels. The data measures matters related to tea consumption.
+
+#visualizing the data with bar plots
+#first, selecting parts of the data
+tea1 <- dplyr::select(tea, 1:13)
+tea2 <- dplyr::select(tea, 14:25)
+tea3 <- dplyr::select(tea, 26:36)
+
+#drawing the plots 
+gather(tea1) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+
+gather(tea2) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+
+gather(tea3) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar () + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+```
+
+## 5.6 Multiple Correspondence Analysis (MCA) on the subdata tea3
+
+```{r message=FALSE, warning=FALSE}
+head(tea3,4)
+
+#MCA
+mca <- MCA(tea3, graph = TRUE)
+
+summary(mca) #the dimensions explain variance so that the 1st dimension explains 15%, the 2nd 13%, the third and fourth both 11% of variance. Altogether, the MCA produces 11 dimensions.
+
+#Based on the eta squared values, the most important variables that capture the underlying dimensions seem to be: feminine and healthy on the first dimension, exciting and relaxing on the second dimension, and relaxing and sophisticated on the third dimension. Thus people view drinking tea differently and certain views tend to occur together (for instance viewing tea drinking as feminine and healthy). These dimensions also set people apart, characterizing people.
+
+#drawing a plot
+plot(mca, invisible=c("ind"), habillage = "quali")
+#The plot further shows the relations between the different variables (closer together = more related) as well as between the variables and the dimensions.
+```
+<br>
+<br>
+<br>
+<br>
+
+
+
+
+
+
