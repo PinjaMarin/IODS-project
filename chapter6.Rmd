@@ -100,7 +100,7 @@ ggplot(RATS_ls, aes(x = Time, y = std_Weight, linetype = ID)) +
 
 ### Summary analyses
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 #First, let's create a graph with group means of the rats' weights with standard error of the mean (se) indicating the variation at each measurement point.
 #
@@ -142,7 +142,7 @@ The plots with error bars (standard error of the means) confirms that group 1 di
 Since the question of most interest is "whether the growth profiles of the
 three groups differ" it would perhaps be most informative to examine summary statistics where the first group mean of rat weight is reduced from the final group mean of rat weight, in each group. Or examine with regression whether the rate of change in body weight differs between the groups. However, let's just take the easiest route for now and do one summary graph with overall group means. We can account for the beginning weight in, for instance, Ancova (Analysis of covariance) later.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # First, creating summaries of data by Group and ID with mean as the summary variable.
 #
 RATS_s2 <- RATS_l %>%
@@ -180,7 +180,7 @@ The boxplots also show clearly group differences (but they are also calculated w
 
 
 ### Examining the group differences with a few tests 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # First, let's apply an analysis of variance (Anova) to examine the groups' differences. Let's use the data without the one outlier that was removed. 
 
 res.aov <- aov(mean ~ Group, data = RATS_s2_no)
@@ -240,7 +240,7 @@ The data is about "40 male subjects who were randomly assigned to one of two tre
 and grandiosity; each of these is rated from one (not present) to seven
 (extremely severe). The scale is used to evaluate patients suspected of having schizophrenia." I am assuming that higher score = higher chance of schizophrenia, or at least more schizophrenic symptoms.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #First, let's ignore the repeated-measures in the data and treat each observation as independent.
 
 #Print out a summary table of all variables
@@ -297,7 +297,7 @@ The linear model (regression model) supports this view since treatment2 does not
 
 ### Moving onto more appropriate plots and analyses for repeated-measures i.e. longitudinal data
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #making a line plot which accounts for the longitudinal structure of the data by joining together the measurement values from same individual.
 
 p7 <- ggplot(BPRS_l_test, aes(x = week, y = bprs, group = subject))
@@ -343,7 +343,7 @@ pairs(BPRS_wide[,2:11], col=BPRS_wide$treatment, cex = 0.7)
 
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 
 library(lme4)
 #First, let's fit a random intercept model and include the two explanatory variables: week and treatment.
